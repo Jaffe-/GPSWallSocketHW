@@ -2,7 +2,7 @@
 TARGET = fw
 
 # Target type
-MCU=t85
+MCU=atmega328
 PROGRAMMER=jtag3isp
 F_CPU=8000000L
 
