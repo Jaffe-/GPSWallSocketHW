@@ -5,12 +5,14 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "task.h"
+#include <task/task.h>
+#include <usart/usart.h>
 
-void blinky(void);
+void dummy_task(void);
 
 struct task tasks[] = {
-    { &blinky, 255, 0 }
+    { &dummy_task, 255, 0 },
+    { &usart_send_handler, 1, 0}
 };
 
 uint8_t num_tasks = sizeof(tasks) / sizeof(struct task);
@@ -25,8 +27,8 @@ void task_setup()
     // CTC operation
     TCCR0A = 0b10 << WGM00;
 
-    // Set period (
-    OCR0A = F_CPU / (256 * 1000L);
+    // Set period to ~15 kHz
+    OCR0A = 4;
 
     // Enable compare match interrupt
     TIMSK0 = 1 << OCIE0A;
