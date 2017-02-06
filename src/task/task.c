@@ -8,10 +8,7 @@
 #include <task/task.h>
 #include <usart/usart.h>
 
-void dummy_task(void);
-
 struct task tasks[] = {
-    { &dummy_task, 255, 0 },
     { &usart_send_handler, 1, 0}
 };
 
