@@ -2,7 +2,7 @@
 #include <nRF905.h>
 #include <nRF905_defs.h>
 #include <nRF905_types.h>
-
+#include "types.h"
 void setup()
 {
     Serial.begin(9600);
