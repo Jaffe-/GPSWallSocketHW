@@ -1,7 +1,7 @@
-#include <nRF905_config.h>
-#include <nRF905.h>
-#include <nRF905_defs.h>
-#include <nRF905_types.h>
+#include "libs/nRF905_config.h"
+#include "libs/nRF905.h"
+#include "libs/nRF905_defs.h"
+#include "libs/nRF905_types.h"
 #include "types.h"
 #include "libs/protocol.h"
 
