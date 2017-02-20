@@ -3,6 +3,8 @@
 #include <nRF905_defs.h>
 #include <nRF905_types.h>
 #include "types.h"
+#include "libs/protocol.h"
+
 void setup()
 {
     Serial.begin(9600);
