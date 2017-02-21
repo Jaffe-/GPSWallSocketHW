@@ -3,6 +3,8 @@
 #include <iostream>
 #include "poller.h"
 #include "ioexception.h"
+
+#define LOG_MODULE "Poller"
 #include "log.h"
 
 void Poller::add_handler(int fd, const std::function<void(void)>& handler) {

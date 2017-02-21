@@ -6,8 +6,10 @@
 #include "ioexception.h"
 #include "poller.h"
 #include "rapidjson/document.h"
-#include "log.h"
 #include "../node/libs/protocol.h"
+
+#define LOG_MODULE "Radio"
+#include "log.h"
 
 using namespace rapidjson;
 

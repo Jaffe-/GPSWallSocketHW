@@ -7,6 +7,8 @@
 #include "poller.h"
 #include "socket.h"
 #include "ioexception.h"
+
+#define LOG_MODULE "Socket"
 #include "log.h"
 
 Socket::Socket(const std::string& filename, Poller& poller, const std::function<void(void)>& recv_handler)
@@ -51,7 +53,9 @@ std::string Socket::receive() {
         return "";
     }
     buf[read_size] = '\0';
-    LOG_DETAILED("Socket received: " << buf);
+    if (read_size > 0) {
+        LOG_DETAILED("Received: " << buf);
+    }
     return buf;
 }
 
@@ -60,7 +64,7 @@ void Socket::send(const std::string& data) {
         remove_connection();
         return;
     }
-    LOG_DETAILED("Socket sent: " << data);
+    LOG_DETAILED("Sent: " << data);
 }
 
 void Socket::add_connection(const std::function<void(void)>& recv_handler) {
