@@ -23,10 +23,6 @@ nRF905::~nRF905() {
     close(fd);
 }
 
-int nRF905::open_attribute(const std::string& name) {
-    return fd;
-}
-
 void nRF905::set_attribute(const std::string& name, char *data, int size) {
     int fd;
     const std::string filename = "/sys/bus/spi/devices/spi0.0/" + name;

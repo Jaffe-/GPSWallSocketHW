@@ -80,6 +80,7 @@ void Socket::add_connection(const std::function<void(void)>& recv_handler) {
         state = CONNECTED;
     }
     else {
+        // Avoid some headaches if more than one client tries to connect for some reason
         int new_fd;
         if ((new_fd = accept(sock_fd, (struct sockaddr *)&remote, &rsize)) == -1) {
             throw IOException("Failed to accept() on socket", errno);

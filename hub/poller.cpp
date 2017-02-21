@@ -39,7 +39,7 @@ void Poller::run() {
 
     for (const auto& entry : handlers) {
         int fd = entry.first;
-        auto fn = entry.second;
+        const auto& fn = entry.second;
 
         if (FD_ISSET(fd, &readfds)) {
             fn();
