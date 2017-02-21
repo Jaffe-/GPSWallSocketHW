@@ -37,7 +37,7 @@ Radio::Radio()
       running(true) {
     nrf.set_rx_address(0x586F2E10);
     nrf.set_tx_address(0xFE4CA6E5);
-    nrf.set_listen();
+    nrf.set_listen(true);
     nrf.set_channel(0, 108);  // 108 is 433.200 MHz
     nrf.set_pwr(0);
 }

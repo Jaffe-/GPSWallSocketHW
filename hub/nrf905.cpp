@@ -45,8 +45,9 @@ void nRF905::set_tx_address(uint32_t address) {
     set_attribute("tx_address", reinterpret_cast<char *>(&address), 4);
 }
 
-void nRF905::set_listen() {
-    char c = '1';
+void nRF905::set_listen(bool listen) {
+    LOG("Set listen mode: " << listen);
+    char c = listen ? '1' : '0';
     set_attribute("listen", &c, 1);
 }
 

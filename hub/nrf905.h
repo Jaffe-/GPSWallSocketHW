@@ -18,7 +18,7 @@ public:
     int get_fd() const { return fd; }
     void set_tx_address(uint32_t address);
     void set_rx_address(uint32_t address);
-    void set_listen();
+    void set_listen(bool listen);
     void set_frequency(unsigned int freq);
     void set_pwr(int pwr);
     void set_channel(bool hf, int chn);
