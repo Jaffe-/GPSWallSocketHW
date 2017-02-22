@@ -1,5 +1,5 @@
 CFLAGS = -std=c++11 -Wextra -pedantic -MD -MP
-SRC = radio.cpp nrf905.cpp socket.cpp poller.cpp
+SRC = ../node/libs/protocol.cpp radio.cpp nrf905.cpp socket.cpp poller.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = radio
 
