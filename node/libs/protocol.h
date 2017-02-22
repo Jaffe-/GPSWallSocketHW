@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 /* Header file for common protocol functions */
 
