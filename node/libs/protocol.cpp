@@ -44,11 +44,11 @@ void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState con
 /* Decode functions */
 
 MessageType get_msg_type(const uint8_t *buffer) {
-    return *(reinterpret_cast<MessageType*>(buffer[0]));
+    return *(reinterpret_cast<const MessageType*>(&buffer[0]));
 }
 
 uint32_t get_msg_address(const uint8_t *buffer) {
-    return *(reinterpret_cast<uint32_t*>(buffer[1]));
+    return *(reinterpret_cast<const uint32_t*>(&buffer[1]));
 }
 
 void deserialize(const uint8_t *buffer) {}
