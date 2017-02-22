@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <string>
+#include <algorithm>
 #include "nrf905.h"
 #include "ioexception.h"
 
@@ -82,18 +83,19 @@ void nRF905::set_pwr(int pwr) {
     set_attribute("pa_pwr", buf, sizeof(buf));
 }
 
-void nRF905::send(const std::string& data) {
-    char buf[32] {};
-    strncpy(buf, data.c_str(), 32);
+void nRF905::send(const std::basic_string<uint8_t>& data) {
+    assert(data.length() <= 32);
+    uint8_t buf[32] {};
+    std::copy(data.begin(), data.end(), buf);
     if (write(fd, buf, 32) == -1) {
         throw IOException("Failed to write to nRF905 device", errno);
     }
     LOG_DETAILED("Sent: " << buf);
 }
 
-std::string nRF905::receive() {
-    char buf[32] {};
-    if (read(fd, buf, 32) == -1) {
+std::basic_string<uint8_t> nRF905::receive() {
+    uint8_t buf[32] {};
+    if (read(fd, reinterpret_cast<char*>(buf), 32) == -1) {
         throw IOException("Failed to read from nRF905 device", errno);
     }
     LOG_DETAILED("Received: " << buf);

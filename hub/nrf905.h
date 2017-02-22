@@ -22,6 +22,6 @@ public:
     void set_frequency(unsigned int freq);
     void set_pwr(int pwr);
     void set_channel(bool hf, int chn);
-    void send(const std::string& data);
-    std::string receive();
+    void send(const std::basic_string<uint8_t>& data);
+    std::basic_string<uint8_t> receive();
 };
