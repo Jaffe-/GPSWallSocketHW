@@ -12,7 +12,7 @@ void protocol_set_my_address(uint32_t address) {
 }
 
 
-void serialize(uint8_t *buffer) {};
+void serialize(uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
 void serialize(uint8_t *buffer, T first, Rest... rest) {
@@ -43,34 +43,34 @@ void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState con
 
 /* Decode functions */
 
-MessageType get_msg_type(uint8_t *buffer) {
+MessageType get_msg_type(const uint8_t *buffer) {
     return *(reinterpret_cast<MessageType*>(buffer[0]));
 }
 
-uint32_t get_msg_address(uint8_t *buffer) {
+uint32_t get_msg_address(const uint8_t *buffer) {
     return *(reinterpret_cast<uint32_t*>(buffer[1]));
 }
 
-void deserialize(uint8_t *buffer) {};
+void deserialize(const uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
-void deserialize(uint8_t *buffer, T* first, Rest*... rest) {
-    *first = *(reinterpret_cast<T*>(&buffer[FIELDS_START]));
+void deserialize(const uint8_t *buffer, T* first, Rest*... rest) {
+    *first = *(reinterpret_cast<const T*>(&buffer[FIELDS_START]));
     deserialize(&buffer[FIELDS_START + sizeof(T)], rest...);
 }
 
-void decode_msg_config(uint8_t *buffer, uint32_t *new_address) {
+void decode_msg_config(const uint8_t *buffer, uint32_t *new_address) {
     deserialize(buffer, new_address);
 }
 
-void decode_msg_status(uint8_t *buffer, RelayState *relay_state, ControlState *control_state, float *current) {
+void decode_msg_status(const uint8_t *buffer, RelayState *relay_state, ControlState *control_state, float *current) {
     deserialize(buffer, relay_state, control_state, current);
 }
 
 
 /* Verification that message is OK */
 
-bool verify_msg(uint8_t *buffer) {
+bool verify_msg(const uint8_t *buffer) {
     MessageType msg_type = get_msg_type(buffer);
     bool found = false;
     for (auto type : { MessageType::ACK,
