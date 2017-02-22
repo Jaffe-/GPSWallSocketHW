@@ -1,0 +1,6 @@
+Log of Problems and how weæve solved them:
+----------------------------------------------
+Problem: ping example was not working
+
+Solution: We were using too large resistors on the voltage divider between the arduino and the radio. Now using 470R and 1K resistors, it worked.
+----------------------------------------------
