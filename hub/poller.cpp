@@ -33,7 +33,9 @@ void Poller::run() {
         }
     }
 
-    if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
+    struct timeval tv {};
+    tv.tv_sec = 2;
+    if (select(max_fd + 1, &readfds, NULL, NULL, &tv) == -1) {
         throw IOException("select() failed", errno);
     }
 

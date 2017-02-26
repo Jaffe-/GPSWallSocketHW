@@ -83,8 +83,10 @@ void nRF905::set_pwr(int pwr) {
     set_attribute("pa_pwr", buf, sizeof(buf));
 }
 
-void nRF905::send(const std::basic_string<uint8_t>& data) {
+void nRF905::send(uint32_t address, const std::basic_string<uint8_t>& data) {
     assert(data.length() <= 32);
+
+    set_tx_address(address);
     uint8_t buf[32] {};
     std::copy(data.begin(), data.end(), buf);
     if (write(fd, buf, 32) == -1) {
