@@ -6,7 +6,6 @@
 #include "nrf905.h"
 #include "socket.h"
 #include "ioexception.h"
-#include "poller.h"
 #include "json.hpp"
 #include "../node/libs/protocol.h"
 
@@ -100,8 +99,8 @@ public:
 };
 
 Hub::Hub()
-    : nrf("/dev/nrf905", poller, [this] () { nrf_receive_handler(); }),
-      socket("/var/run/radio.sock", poller, [this] () { socket_receive_handler(); }),
+    : nrf("/dev/nrf905"),
+      socket("/home/pi/radio.sock"),
       running(true) {
     nrf.set_rx_address(0x586F2E10);
     nrf.set_tx_address(0xFE4CA6E5);
@@ -269,7 +268,28 @@ void Hub::timeout_handler() {
 
 void Hub::run() {
     while (running) {
-        poller.run();
+        fd_set readfds;
+        int nrf_fd = nrf.get_fd();
+        int socket_fd = socket.get_fd();
+
+        FD_ZERO(&readfds);
+        FD_SET(nrf.get_fd(), &readfds);
+        FD_SET(socket.get_fd(), &readfds);
+        int max_fd = nrf_fd > socket_fd ? nrf_fd : socket_fd;
+
+        struct timeval tv {};
+        tv.tv_sec = 2;
+        if (select(max_fd + 1, &readfds, NULL, NULL, &tv) == -1) {
+            throw IOException("select() failed", errno);
+        }
+
+        if (FD_ISSET(nrf_fd, &readfds)) {
+            nrf_receive_handler();
+        }
+        else if (FD_ISSET(socket_fd, &readfds)) {
+            socket_receive_handler();
+        }
+
         send_handler();
         timeout_handler();
     }

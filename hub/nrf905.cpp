@@ -11,11 +11,10 @@
 #define LOG_MODULE "nRF905"
 #include "log.h"
 
-nRF905::nRF905(const std::string& device_file, Poller &poller, const std::function<void(void)>& recv_handler) {
+nRF905::nRF905(const std::string& device_file) {
 	if ((fd = open(device_file.c_str(), O_RDWR)) == -1) {
         throw IOException("Failed to open nRF905 device", errno);
 	}
-    poller.add_handler(fd, recv_handler);
     LOG("Initialized nRF905 device");
 }
 
