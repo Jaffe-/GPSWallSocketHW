@@ -115,13 +115,14 @@ void Hub::ack_message(uint32_t address) {
 
 void Hub::nrf_receive_handler() {
     std::basic_string<uint8_t> s_msg = nrf.receive();
-    const uint8_t *msg = s_msg.c_str();
+    const uint8_t *msg = s_msg.data();
 
     uint32_t address = get_msg_address(msg);
     MessageType type = get_msg_type(msg);
 
     if (devices.find(address) == devices.end()) {
         devices[address] = DeviceEntry();
+        socket.send(make_event_json(address, "device_online"));
     }
     devices[address].last_receive_time = std::chrono::steady_clock::now();
 
@@ -138,7 +139,7 @@ void Hub::nrf_receive_handler() {
         if (address != UNCONFIGURED_ADDRESS) {
             LOG("INIT_CONFIG should only be sent from address 1");
         } else {
-            socket.send(make_message_json(address, MessageType::INIT_CONFIG).dump());
+            socket.send(make_message_json(address, MessageType::INIT_CONFIG));
         }
         break;
 
@@ -159,9 +160,9 @@ void Hub::nrf_receive_handler() {
         /* Tell the cloud if the relay state changed for some reason */
         if (devices[address].relay_state != relay_state) {
             if (relay_state == RelayState::ON)
-                socket.send(make_message_json(address, MessageType::ON).dump());
+                socket.send(make_message_json(address, MessageType::ON));
             else
-                socket.send(make_message_json(address, MessageType::OFF).dump());
+                socket.send(make_message_json(address, MessageType::OFF));
         }
         // TODO: what do we do when ControlState changes?
         devices[address].relay_state = relay_state;
@@ -180,41 +181,41 @@ void Hub::nrf_receive_handler() {
 }
 
 void Hub::socket_receive_handler() {
-    std::string msg = socket.receive();
-    if (msg.empty())
+    std::vector<json> json_packets = socket.receive();
+    if (json_packets.empty())
         return;
 
-    uint8_t buffer[32];
+    for (const auto& json_packet : json_packets) {
+        uint8_t buffer[32] {};
 
-    LOG("recv: " << msg);
-    json recv_json (json::parse(msg));
-    uint32_t address = recv_json["address"];
-    json msg_json (recv_json["message"]);
-    std::string type = msg_json["type"];
+        uint32_t address = json_packet["address"];
+        json msg_json (json_packet["message"]);
+        std::string type = msg_json["type"];
 
-    if (type == "on") {
-        create_msg_on(buffer);
-    }
-    else if (type == "off") {
-        create_msg_off(buffer);
-    }
-    else if (type == "config") {
-        uint32_t new_address = msg_json["new_address"];
-        create_msg_config(buffer, new_address);
-    }
-    else {
-        LOG("Unexpected message " << type << " received on socket");
-        return;
-    }
+        if (type == "on") {
+            create_msg_on(buffer);
+        }
+        else if (type == "off") {
+            create_msg_off(buffer);
+        }
+        else if (type == "config") {
+            uint32_t new_address = msg_json["new_address"];
+            create_msg_config(buffer, new_address);
+        }
+        else {
+            LOG("Unexpected message " << type << " received on socket");
+            continue;
+        }
 
-    send(address, buffer);
+        send(address, std::basic_string<uint8_t>{buffer, 32});
+    }
 }
 
 void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
     auto it = devices.find(address);
     if (it == devices.end()) {
         LOG("Tried to send message to unregistered device.");
-        socket.send(make_error_json(address, "device_offline").dump());
+        socket.send(make_error_json(address, "device_offline"));
         return;
     }
 
@@ -227,7 +228,7 @@ void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
         send_queue.push(address);
     }
     else {
-        socket.send(make_error_json(address, "transmit_in_progress").dump());
+        socket.send(make_error_json(address, "transmit_in_progress"));
     }
 }
 
@@ -240,7 +241,7 @@ void Hub::send_handler() {
             nrf.send(address, device.send_buffer);
             device.send_tries++;
             if (device.send_tries == SEND_MAX_TRIES) {
-                socket.send(make_error_json(address, "device_failure").dump());
+                socket.send(make_error_json(address, "device_failure"));
                 device.send_state = DeviceEntry::FAILURE;
             }
         }
@@ -256,7 +257,7 @@ void Hub::timeout_handler() {
 
         if (std::chrono::steady_clock::now() - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
             LOG("Device at address " << std::hex << address << std::dec << " timed out (assumed dead)");
-            socket.send(make_event_json(address, "offline").dump());
+            socket.send(make_event_json(address, "offline"));
             it = devices.erase(it);
         }
         else {

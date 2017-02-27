@@ -4,6 +4,9 @@
 #include <sys/stat.h>
 #include <string>
 #include <iostream>
+#include <vector>
+#include <sstream>
+#include "json.hpp"
 #include "socket.h"
 #include "ioexception.h"
 
@@ -31,7 +34,7 @@ Socket::~Socket() {
     close(fd);
 }
 
-std::string Socket::receive() {
+std::vector<json> Socket::receive() {
     char buf[4096] {};
     int read_size;
     if ((read_size = read(fd, buf, sizeof(buf))) == -1) {
@@ -41,11 +44,20 @@ std::string Socket::receive() {
     if (read_size > 0) {
         LOG_DETAILED("Received: " << buf);
     }
-    return buf;
+
+    std::vector<json> json_packets;
+    std::stringstream ss(buf);
+    std::string line;
+    while (std::getline(ss, line)) {
+        json_packets.push_back(json::parse(line));
+    }
+    return json_packets;
 }
 
-void Socket::send(const std::string& data) {
-    if (write(fd, data.c_str(), data.length()) == -1) {
+void Socket::send(const json& data) {
+    std::string msg = data.dump() + '\n';
+    LOG("send: " << msg);
+    if (write(fd, msg.c_str(), msg.length()) == -1) {
         throw IOException("Failed to write to node socket", errno);
     }
     LOG_DETAILED("Sent: " << data);

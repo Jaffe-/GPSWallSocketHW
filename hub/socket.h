@@ -2,6 +2,10 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 class Socket {
 private:
@@ -12,6 +16,6 @@ public:
     ~Socket();
 
     int get_fd() const { return fd; }
-    std::string receive();
-    void send(const std::string& data);
+    std::vector<json> receive();
+    void send(const json& data);
 };
