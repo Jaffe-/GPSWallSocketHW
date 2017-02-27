@@ -36,12 +36,12 @@ void nRF905::set_attribute(const std::string& name, char *data, int size) {
 }
 
 void nRF905::set_rx_address(uint32_t address) {
-    LOG("Set RX address: " << std::hex << address << std::dec);
+    LOG_DETAILED("Set RX address: " << std::hex << address << std::dec);
     set_attribute("rx_address", reinterpret_cast<char *>(&address), 4);
 }
 
 void nRF905::set_tx_address(uint32_t address) {
-    LOG("Set TX address: " << std::hex << address << std::dec);
+    LOG_DETAILED("Set TX address: " << std::hex << address << std::dec);
     set_attribute("tx_address", reinterpret_cast<char *>(&address), 4);
 }
 
@@ -91,7 +91,6 @@ void nRF905::send(uint32_t address, const std::basic_string<uint8_t>& data) {
     if (write(fd, buf, 32) == -1) {
         throw IOException("Failed to write to nRF905 device", errno);
     }
-    LOG_DETAILED("Sent: " << buf);
 }
 
 std::basic_string<uint8_t> nRF905::receive() {
@@ -99,6 +98,5 @@ std::basic_string<uint8_t> nRF905::receive() {
     if (read(fd, reinterpret_cast<char*>(buf), 32) == -1) {
         throw IOException("Failed to read from nRF905 device", errno);
     }
-    LOG_DETAILED("Received: " << buf);
     return std::basic_string<uint8_t>{buf, 32};
 }

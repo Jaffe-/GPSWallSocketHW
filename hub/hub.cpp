@@ -87,16 +87,17 @@ void Hub::nrf_receive_handler() {
     uint32_t address = get_msg_address(msg);
     MessageType type = get_msg_type(msg);
 
-    if (devices.find(address) == devices.end()) {
+    if (address != UNCONFIGURED_ADDRESS && devices.find(address) == devices.end()) {
         devices[address] = DeviceEntry();
         socket.send(make_event_json(address, "device_online"));
     }
     devices[address].last_receive_time = std::chrono::steady_clock::now();
 
     if (!verify_msg(msg)) {
-        LOG("Ill-formed message received from " << std::hex << address << std::dec);
+        LOG_WARN(LOG_ADDR(address) << "received ill-formed message");
         return;
     }
+    LOG_DETAILED(LOG_ADDR(address) << "received " << get_msg_type_string(type));
 
     switch (type) {
     case MessageType::ACK:
@@ -107,9 +108,8 @@ void Hub::nrf_receive_handler() {
         /* Messages that are forwarded straight to the cloud */
 
     case MessageType::INIT_CONFIG:
-        LOG("Received INIT_CONFIG from " << std::hex << address << std::dec);
         if (address != UNCONFIGURED_ADDRESS) {
-            LOG("INIT_CONFIG should only be sent from address 1");
+            LOG_WARN("INIT_CONFIG should only be sent from address 1");
         } else {
             socket.send(make_event_json(address, "config_request"));
         }
@@ -156,7 +156,7 @@ void Hub::nrf_receive_handler() {
     case MessageType::OFF:
     case MessageType::CONFIG:
     default:
-        LOG("Unexpected message " << (int)type << " received from " << std::hex << address << std::dec);
+        LOG_WARN("Unexpected message to be received from node");
         break;
     }
 
@@ -188,7 +188,7 @@ void Hub::socket_receive_handler() {
             create_msg_config(buffer, new_address);
         }
         else {
-            LOG("Unexpected command " << command << " received on socket");
+            LOG_WARN("Unexpected command " << command << " received on socket");
             continue;
         }
 
@@ -199,7 +199,7 @@ void Hub::socket_receive_handler() {
 void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
     auto it = devices.find(address);
     if (it == devices.end()) {
-        LOG("Tried to send message to unregistered device.");
+        LOG_WARN("Tried to send message to unregistered device.");
         socket.send(make_error_json(address, "device_offline"));
         return;
     }
@@ -222,9 +222,13 @@ void Hub::send_handler() {
         DeviceEntry& device = pair.second;
 
         if (device.send_state == DeviceEntry::TRANSMITTING) {
+            if (device.send_tries > 0) {
+                LOG(LOG_ADDR(address) << "no ACK, retry number " << device.send_tries);
+            }
             nrf.send(address, device.send_buffer);
             device.send_tries++;
             if (device.send_tries == SEND_MAX_TRIES) {
+                LOG_WARN(LOG_ADDR(address) << "no ACK, giving up");
                 socket.send(make_error_json(address, "device_failure"));
                 device.send_state = DeviceEntry::FAILURE;
             }
@@ -238,7 +242,7 @@ void Hub::timeout_handler() {
         DeviceEntry& device = it->second;
 
         if (std::chrono::steady_clock::now() - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
-            LOG("Device at address " << std::hex << address << std::dec << " timed out (assumed dead)");
+            LOG(LOG_ADDR(address) << "timed out (assumed dead)");
             socket.send(make_event_json(address, "offline"));
             it = devices.erase(it);
         }

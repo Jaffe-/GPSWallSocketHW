@@ -16,3 +16,5 @@ extern int detail_enabled;
 
 #define LOG(exp) LOG_WRITE(0, exp)
 #define LOG_DETAILED(exp) LOG_WRITE(1, exp)
+#define LOG_WARN(exp) LOG_WRITE(0, "*** " << exp)
+#define LOG_ADDR(addr) "Address " << std::hex << addr << std::dec << ": "
