@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include "poller.h"
 
 class nRF905 {
 private:
@@ -12,7 +11,7 @@ private:
     void get_attribute(const std::string& name, char *data, int size);
 
 public:
-    nRF905(const std::string& device_file, Poller& poller, const std::function<void(void)>& recv_handler);
+    nRF905(const std::string& device_file);
     ~nRF905();
 
     int get_fd() const { return fd; }

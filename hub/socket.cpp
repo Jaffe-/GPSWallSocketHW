@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <string>
 #include <iostream>
-#include "poller.h"
 #include "socket.h"
 #include "ioexception.h"
 

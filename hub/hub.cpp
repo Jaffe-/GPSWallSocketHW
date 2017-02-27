@@ -62,7 +62,6 @@ json make_event_json(uint32_t address, const std::string& event) {
 
 class Hub {
 private:
-    Poller poller;
     nRF905 nrf;
     Socket socket;
     bool running;
