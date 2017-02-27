@@ -99,8 +99,13 @@ void Hub::nrf_receive_handler() {
     }
 
     switch (type) {
+    case MessageType::ACK:
+        ack_message(address);
+        return;
+
 
         /* Messages that are forwarded straight to the cloud */
+
     case MessageType::INIT_CONFIG:
         LOG("Received INIT_CONFIG from " << std::hex << address << std::dec);
         if (address != UNCONFIGURED_ADDRESS) {
@@ -110,10 +115,8 @@ void Hub::nrf_receive_handler() {
         }
         break;
 
+
         /* Messages that we should handle here */
-    case MessageType::ACK:
-        ack_message(address);
-        return;
 
     case MessageType::STATUS: {
         RelayState relay_state;
@@ -146,7 +149,9 @@ void Hub::nrf_receive_handler() {
         break;
     }
 
+
         /* Messages that should not be received by the hub */
+
     case MessageType::ON:
     case MessageType::OFF:
     case MessageType::CONFIG:

@@ -34,4 +34,7 @@ uint32_t get_msg_address(const uint8_t *buffer);
 void decode_msg_config(const uint8_t *buffer, uint32_t *address);
 void decode_msg_status(const uint8_t *buffer, RelayState *relay_state, ControlState *control_state, float *current);
 
+const char* get_msg_type_string(MessageType type);
+const char* get_rs_type_string(RelayState rs);
+const char* get_cs_type_string(ControlState cs);
 bool verify_msg(const uint8_t *buffer);

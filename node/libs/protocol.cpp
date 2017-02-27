@@ -75,6 +75,52 @@ void decode_msg_status(const uint8_t *buffer, RelayState *relay_state, ControlSt
 }
 
 
+/* Message strings */
+
+const char* get_msg_type_string(MessageType type) {
+    switch (type) {
+    case MessageType::ON:
+        return "ON";
+    case MessageType::OFF:
+        return "OFF";
+    case MessageType::ACK:
+        return "ACK";
+    case MessageType::INIT_CONFIG:
+        return "INIT_CONFIG";
+    case MessageType::CONFIG:
+        return "CONFIG";
+    case MessageType::STATUS:
+        return "STATUS";
+    default:
+        return "**invalid**";
+    }
+}
+
+const char* get_rs_type_string(RelayState rs) {
+    switch (rs) {
+    case RelayState::ON:
+        return "ON";
+    case RelayState::OFF:
+        return "OFF";
+    default:
+        return "**invalid**";
+    }
+}
+
+const char* get_cs_type_string(ControlState cs) {
+    switch (cs) {
+    case ControlState::ON:
+        return "ON";
+    case ControlState::OFF:
+        return "OFF";
+    case ControlState::GEO:
+        return "GEO";
+    default:
+        return "**invalid**";
+    }
+}
+
+
 /* Verification that message is OK */
 
 bool verify_msg(const uint8_t *buffer) {
