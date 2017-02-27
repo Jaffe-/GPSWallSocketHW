@@ -22,6 +22,7 @@ enum class ControlState : uint8_t {
 
 void protocol_set_my_address(uint32_t address);
 
+void create_msg_ack(uint8_t *buffer);
 void create_msg_on(uint8_t *buffer);
 void create_msg_off(uint8_t *buffer);
 void create_msg_config(uint8_t *buffer, uint32_t address);

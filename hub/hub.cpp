@@ -18,46 +18,15 @@ int detail_enabled;
 
 constexpr uint32_t UNCONFIGURED_ADDRESS = 1;
 constexpr int SEND_MAX_TRIES = 5;
+constexpr int SUCCESSIVE_SENDS = 5;
 constexpr std::chrono::duration<double> DEVICE_UPDATE_TIMEOUT = std::chrono::seconds(5);
 
-std::string message_type_str(MessageType type) {
-    switch (type) {
-    case MessageType::ACK:
-        return "ack";
-    case MessageType::ON:
-        return "on";
-    case MessageType::OFF:
-        return "off";
-    case MessageType::CONFIG:
-        return "config";
-    case MessageType::INIT_CONFIG:
-        return "init_config";
-    case MessageType::STATUS:
-        return "status";
-    default:
-        return "invalid";
-    }
-}
-
-json enclose_json(const std::string& kind, uint32_t address, const json &data) {
-    json js;
-    js["address"] = address;
-    js[kind] = data;
-    return js;
-}
-
-json make_message_json(uint32_t address, MessageType type) {
-    json msg_js;
-    msg_js["type"] = message_type_str(type);
-    return enclose_json("message", address, msg_js);
-}
-
 json make_error_json(uint32_t address, const std::string& error) {
-    return enclose_json("error", address, error);
+    return {{"address", address}, {"error", error}};
 }
 
 json make_event_json(uint32_t address, const std::string& event) {
-    return enclose_json("event", address, event);
+    return {{"address", address}, {"event", event}};
 }
 
 class Hub {
@@ -65,8 +34,6 @@ private:
     nRF905 nrf;
     Socket socket;
     bool running;
-
-    std::queue<uint32_t> send_queue;
 
     struct DeviceEntry {
         std::chrono::steady_clock::time_point last_receive_time;
@@ -139,7 +106,7 @@ void Hub::nrf_receive_handler() {
         if (address != UNCONFIGURED_ADDRESS) {
             LOG("INIT_CONFIG should only be sent from address 1");
         } else {
-            socket.send(make_message_json(address, MessageType::INIT_CONFIG));
+            socket.send(make_event_json(address, "config_request"));
         }
         break;
 
@@ -160,11 +127,20 @@ void Hub::nrf_receive_handler() {
         /* Tell the cloud if the relay state changed for some reason */
         if (devices[address].relay_state != relay_state) {
             if (relay_state == RelayState::ON)
-                socket.send(make_message_json(address, MessageType::ON));
-            else
-                socket.send(make_message_json(address, MessageType::OFF));
+                socket.send(make_event_json(address, "switched_on"));
+            else if (relay_state == RelayState::OFF)
+                socket.send(make_event_json(address, "switched_off"));
         }
-        // TODO: what do we do when ControlState changes?
+
+        if (devices[address].control_state != control_state) {
+            if (control_state == ControlState::ON ||
+                control_state == ControlState::OFF) {
+                socket.send(make_event_json(address, "control_manual"));
+            }
+            else if (control_state == ControlState::GEO)
+                socket.send(make_event_json(address, "control_geo"));
+        }
+
         devices[address].relay_state = relay_state;
         devices[address].control_state = control_state;
         break;
@@ -175,9 +151,14 @@ void Hub::nrf_receive_handler() {
     case MessageType::OFF:
     case MessageType::CONFIG:
     default:
-        LOG("Unexpected message " << message_type_str(type) << " received from " << std::hex << address << std::dec);
+        LOG("Unexpected message " << (int)type << " received from " << std::hex << address << std::dec);
         break;
     }
+
+    /* Acknowledge the message regardless */
+    uint8_t buffer[32] {};
+    create_msg_ack(buffer);
+    nrf.send(address, std::basic_string<uint8_t>{buffer, 32});
 }
 
 void Hub::socket_receive_handler() {
@@ -189,21 +170,20 @@ void Hub::socket_receive_handler() {
         uint8_t buffer[32] {};
 
         uint32_t address = json_packet["address"];
-        json msg_json (json_packet["message"]);
-        std::string type = msg_json["type"];
+        std::string command = json_packet["command"];
 
-        if (type == "on") {
+        if (command == "on") {
             create_msg_on(buffer);
         }
-        else if (type == "off") {
+        else if (command == "off") {
             create_msg_off(buffer);
         }
-        else if (type == "config") {
-            uint32_t new_address = msg_json["new_address"];
+        else if (command == "config") {
+            uint32_t new_address = json_packet["new_address"];
             create_msg_config(buffer, new_address);
         }
         else {
-            LOG("Unexpected message " << type << " received on socket");
+            LOG("Unexpected command " << command << " received on socket");
             continue;
         }
 
@@ -225,7 +205,6 @@ void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
         device.send_buffer = msg;
         device.send_tries = 0;
         device.send_state = DeviceEntry::TRANSMITTING;
-        send_queue.push(address);
     }
     else {
         socket.send(make_error_json(address, "transmit_in_progress"));
@@ -233,9 +212,9 @@ void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
 }
 
 void Hub::send_handler() {
-    while (!send_queue.empty()) {
-        uint32_t address = send_queue.front();
-        DeviceEntry& device = devices[address];
+    for (auto& pair : devices) {
+        uint32_t address = pair.first;
+        DeviceEntry& device = pair.second;
 
         if (device.send_state == DeviceEntry::TRANSMITTING) {
             nrf.send(address, device.send_buffer);
@@ -245,8 +224,6 @@ void Hub::send_handler() {
                 device.send_state = DeviceEntry::FAILURE;
             }
         }
-
-        send_queue.pop();
     }
 }
 
@@ -277,8 +254,9 @@ void Hub::run() {
         FD_SET(socket.get_fd(), &readfds);
         int max_fd = nrf_fd > socket_fd ? nrf_fd : socket_fd;
 
-        struct timeval tv {};
-        tv.tv_sec = 2;
+        struct timeval tv;
+        tv.tv_usec = 100000;
+        tv.tv_sec = 0;
         if (select(max_fd + 1, &readfds, NULL, NULL, &tv) == -1) {
             throw IOException("select() failed", errno);
         }

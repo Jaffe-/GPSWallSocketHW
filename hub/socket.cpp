@@ -56,7 +56,6 @@ std::vector<json> Socket::receive() {
 
 void Socket::send(const json& data) {
     std::string msg = data.dump() + '\n';
-    LOG("send: " << msg);
     if (write(fd, msg.c_str(), msg.length()) == -1) {
         throw IOException("Failed to write to node socket", errno);
     }

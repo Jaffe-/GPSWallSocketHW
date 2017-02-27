@@ -21,6 +21,10 @@ void serialize(uint8_t *buffer, T first, Rest... rest) {
     serialize(buffer + sizeof(T), rest...);
 }
 
+void create_msg_ack(uint8_t *buffer) {
+    serialize(buffer, MessageType::ACK, my_address);
+}
+
 void create_msg_on(uint8_t *buffer) {
     serialize(buffer, MessageType::ON, my_address);
 }
