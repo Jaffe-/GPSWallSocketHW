@@ -100,5 +100,5 @@ std::basic_string<uint8_t> nRF905::receive() {
         throw IOException("Failed to read from nRF905 device", errno);
     }
     LOG_DETAILED("Received: " << buf);
-    return buf;
+    return std::basic_string<uint8_t>{buf, 32};
 }

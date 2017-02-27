@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include <initializer_list>
+#include <string.h>
 
 /* Common protocol functions */
 
@@ -48,15 +49,17 @@ MessageType get_msg_type(const uint8_t *buffer) {
 }
 
 uint32_t get_msg_address(const uint8_t *buffer) {
-    return *(reinterpret_cast<const uint32_t*>(&buffer[1]));
+    uint32_t addr;
+    memcpy(reinterpret_cast<uint8_t*>(&addr), &buffer[1] , sizeof(uint32_t));
+    return addr;
 }
 
 void deserialize(const uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
 void deserialize(const uint8_t *buffer, T* first, Rest*... rest) {
-    *first = *(reinterpret_cast<const T*>(&buffer[FIELDS_START]));
-    deserialize(&buffer[FIELDS_START + sizeof(T)], rest...);
+    memcpy(reinterpret_cast<uint8_t*>(first), buffer + FIELDS_START, sizeof(T));
+    deserialize(buffer + sizeof(T), rest...);
 }
 
 void decode_msg_config(const uint8_t *buffer, uint32_t *new_address) {
