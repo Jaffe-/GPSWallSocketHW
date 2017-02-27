@@ -113,7 +113,7 @@ void Hub::nrf_receive_handler() {
         /* Messages that we should handle here */
     case MessageType::ACK:
         ack_message(address);
-        break;
+        return;
 
     case MessageType::STATUS: {
         RelayState relay_state;
