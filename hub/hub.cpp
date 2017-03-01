@@ -68,8 +68,7 @@ Hub::Hub()
     : nrf("/dev/nrf905"),
       socket("/home/pi/radio.sock"),
       running(true) {
-    nrf.set_rx_address(0x586F2E10);
-    nrf.set_tx_address(0xFE4CA6E5);
+    nrf.set_rx_address(0);
     nrf.set_listen(true);
     nrf.set_channel(0, 108);  // 108 is 433.200 MHz
     nrf.set_pwr(0);
@@ -241,7 +240,8 @@ void Hub::timeout_handler() {
         uint32_t address = it->first;
         DeviceEntry& device = it->second;
 
-        if (std::chrono::steady_clock::now() - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
+        if (address != UNCONFIGURED_ADDRESS &&
+            std::chrono::steady_clock::now() - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
             LOG(LOG_ADDR(address) << "timed out (assumed dead)");
             socket.send(make_event_json(address, "offline"));
             it = devices.erase(it);
