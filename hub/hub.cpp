@@ -21,10 +21,6 @@ constexpr int SEND_MAX_TRIES = 5;
 constexpr int SUCCESSIVE_SENDS = 5;
 constexpr std::chrono::duration<double> DEVICE_UPDATE_TIMEOUT = std::chrono::seconds(5);
 
-json make_error_json(uint32_t address, const std::string& error) {
-    return {{"address", address}, {"error", error}};
-}
-
 json make_event_json(uint32_t address, const std::string& event) {
     return {{"address", address}, {"event", event}};
 }
@@ -104,8 +100,6 @@ void Hub::nrf_receive_handler() {
         return;
 
 
-        /* Messages that are forwarded straight to the cloud */
-
     case MessageType::INIT_CONFIG:
         if (address != UNCONFIGURED_ADDRESS) {
             LOG_WARN("INIT_CONFIG should only be sent from address 1");
@@ -114,8 +108,6 @@ void Hub::nrf_receive_handler() {
         }
         break;
 
-
-        /* Messages that we should handle here */
 
     case MessageType::STATUS: {
         RelayState relay_state;
@@ -126,21 +118,22 @@ void Hub::nrf_receive_handler() {
 
         // TODO: Do something with the current
 
-        /* Tell the cloud if the relay state changed for some reason */
-        if (devices[address].relay_state != relay_state) {
-            if (relay_state == RelayState::ON)
-                socket.send(make_event_json(address, "switched_on"));
-            else if (relay_state == RelayState::OFF)
-                socket.send(make_event_json(address, "switched_off"));
-        }
-
-        if (devices[address].control_state != control_state) {
-            if (control_state == ControlState::ON ||
-                control_state == ControlState::OFF) {
-                socket.send(make_event_json(address, "control_manual"));
+        if (devices[address].relay_state != relay_state ||
+            devices[address].control_state != control_state) {
+            if (devices[address].relay_state != relay_state ||
+                control_state == ControlState::GEO) {
+                if (relay_state == RelayState::ON)
+                    socket.send(make_event_json(address, "switched_on"));
+                else if (relay_state == RelayState::OFF)
+                    socket.send(make_event_json(address, "switched_off"));
             }
-            else if (control_state == ControlState::GEO)
-                socket.send(make_event_json(address, "control_geo"));
+
+            else {
+                if (control_state == ControlState::ON)
+                    socket.send(make_event_json(address, "manual_on"));
+                else if (control_state == ControlState::OFF)
+                    socket.send(make_event_json(address, "manual_off"));
+            }
         }
 
         devices[address].relay_state = relay_state;
@@ -173,6 +166,12 @@ void Hub::socket_receive_handler() {
     for (const auto& json_packet : json_packets) {
         uint8_t buffer[32] {};
 
+        if (json_packet.find("address") == json_packet.end() ||
+            json_packet.find("command") == json_packet.end()) {
+            LOG_WARN("Ill-formed JSON received from hub.js");
+            continue;
+        }
+
         uint32_t address = json_packet["address"];
         std::string command = json_packet["command"];
 
@@ -199,7 +198,6 @@ void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
     auto it = devices.find(address);
     if (it == devices.end()) {
         LOG_WARN("Tried to send message to unregistered device.");
-        socket.send(make_error_json(address, "device_offline"));
         return;
     }
 
@@ -209,9 +207,6 @@ void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
         device.send_buffer = msg;
         device.send_tries = 0;
         device.send_state = DeviceEntry::TRANSMITTING;
-    }
-    else {
-        socket.send(make_error_json(address, "transmit_in_progress"));
     }
 }
 
@@ -228,7 +223,7 @@ void Hub::send_handler() {
             device.send_tries++;
             if (device.send_tries == SEND_MAX_TRIES) {
                 LOG_WARN(LOG_ADDR(address) << "no ACK, giving up");
-                socket.send(make_error_json(address, "device_failure"));
+                socket.send(make_event_json(address, "offline"));
                 device.send_state = DeviceEntry::FAILURE;
             }
         }
