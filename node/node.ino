@@ -3,7 +3,7 @@
 #include "libs/nRF905_defs.h"
 #include "libs/nRF905_types.h"
 #include "types.h"
-#include "libs/protocol.h"
+#include "protocol.h"
 
 void setup()
 {

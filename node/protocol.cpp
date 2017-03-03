@@ -1,5 +1,4 @@
 #include "protocol.h"
-#include <initializer_list>
 #include <string.h>
 
 /* Common protocol functions */
@@ -124,14 +123,17 @@ const char* get_cs_type_string(ControlState cs) {
 /* Verification that message is OK */
 
 bool verify_msg(const uint8_t *buffer) {
+    constexpr MessageType valid_types[] = {
+        MessageType::ACK,
+        MessageType::ON,
+        MessageType::OFF,
+        MessageType::CONFIG,
+        MessageType::INIT_CONFIG,
+        MessageType::STATUS
+    };
     MessageType msg_type = get_msg_type(buffer);
     bool found = false;
-    for (auto type : { MessageType::ACK,
-                       MessageType::ON,
-                       MessageType::OFF,
-                       MessageType::CONFIG,
-                       MessageType::INIT_CONFIG,
-                       MessageType::STATUS }) {
+    for (auto type : valid_types) {
         if (type == msg_type) {
             found = true;
             break;
