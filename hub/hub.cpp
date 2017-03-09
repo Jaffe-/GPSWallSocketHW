@@ -7,7 +7,7 @@
 #include "socket.h"
 #include "ioexception.h"
 #include "json.hpp"
-#include "../node/libs/protocol.h"
+#include "../node/protocol.h"
 
 #define LOG_MODULE "Hub"
 #include "log.h"
@@ -62,7 +62,7 @@ public:
 
 Hub::Hub()
     : nrf("/dev/nrf905"),
-      socket("/home/pi/radio.sock"),
+      socket("/tmp/radio.sock"),
       running(true) {
     nrf.set_rx_address(0);
     nrf.set_listen(true);
@@ -112,9 +112,9 @@ void Hub::nrf_receive_handler() {
     case MessageType::STATUS: {
         RelayState relay_state;
         ControlState control_state;
-        float current;
+        float current[5];
 
-        decode_msg_status(msg, &relay_state, &control_state, &current);
+        decode_msg_status(msg, relay_state, control_state, current);
 
         // TODO: Do something with the current
 
