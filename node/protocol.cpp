@@ -60,16 +60,16 @@ uint32_t get_msg_address(const uint8_t *buffer) {
 void deserialize(const uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
-void deserialize(const uint8_t *buffer, T* first, Rest*... rest) {
-    memcpy(reinterpret_cast<uint8_t*>(first), buffer + FIELDS_START, sizeof(T));
+void deserialize(const uint8_t *buffer, T& first, Rest&... rest) {
+    memcpy(reinterpret_cast<uint8_t*>(&first), buffer + FIELDS_START, sizeof(T));
     deserialize(buffer + sizeof(T), rest...);
 }
 
-void decode_msg_config(const uint8_t *buffer, uint32_t *new_address) {
+void decode_msg_config(const uint8_t *buffer, uint32_t &new_address) {
     deserialize(buffer, new_address);
 }
 
-void decode_msg_status(const uint8_t *buffer, RelayState *relay_state, ControlState *control_state, float *current) {
+void decode_msg_status(const uint8_t *buffer, RelayState &relay_state, ControlState &control_state, float (&current)[5]) {
     deserialize(buffer, relay_state, control_state, current);
 }
 
@@ -146,8 +146,8 @@ bool verify_msg(const uint8_t *buffer) {
     if (msg_type == MessageType::STATUS) {
         RelayState rs;
         ControlState cs;
-        float current;
-        decode_msg_status(buffer, &rs, &cs, &current);
+        float current[5];
+        decode_msg_status(buffer, rs, cs, current);
 
         if (!(rs == RelayState::ON || rs == RelayState::OFF))
             return false;
