@@ -61,16 +61,16 @@ void deserialize(const uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
 void deserialize(const uint8_t *buffer, T& first, Rest&... rest) {
-    memcpy(reinterpret_cast<uint8_t*>(&first), buffer + FIELDS_START, sizeof(T));
+    memcpy(reinterpret_cast<uint8_t*>(&first), buffer, sizeof(T));
     deserialize(buffer + sizeof(T), rest...);
 }
 
 void decode_msg_config(const uint8_t *buffer, uint32_t &new_address) {
-    deserialize(buffer, new_address);
+    deserialize(buffer + FIELDS_START, new_address);
 }
 
 void decode_msg_status(const uint8_t *buffer, RelayState &relay_state, ControlState &control_state, float (&current)[5]) {
-    deserialize(buffer, relay_state, control_state, current);
+    deserialize(buffer + FIELDS_START, relay_state, control_state, current);
 }
 
 

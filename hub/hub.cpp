@@ -260,7 +260,7 @@ void Hub::run() {
         int max_fd = nrf_fd > socket_fd ? nrf_fd : socket_fd;
 
         struct timeval tv;
-        tv.tv_usec = 100000;
+        tv.tv_usec = 500000;
         tv.tv_sec = 0;
         if (select(max_fd + 1, &readfds, NULL, NULL, &tv) == -1) {
             throw IOException("select() failed", errno);
@@ -272,9 +272,10 @@ void Hub::run() {
         else if (FD_ISSET(socket_fd, &readfds)) {
             socket_receive_handler();
         }
-
-        send_handler();
-        timeout_handler();
+        else {
+            send_handler();
+            timeout_handler();
+        }
     }
 }
 
