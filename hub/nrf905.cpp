@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "nrf905.h"
 #include "ioexception.h"
+#include <array>
 
 #define LOG_MODULE "nRF905"
 #include "log.h"
@@ -82,9 +83,7 @@ void nRF905::set_pwr(int pwr) {
     set_attribute("pa_pwr", buf, sizeof(buf));
 }
 
-void nRF905::send(uint32_t address, const std::basic_string<uint8_t>& data) {
-    assert(data.length() <= 32);
-
+void nRF905::send(uint32_t address, const std::array<uint8_t, 32>& data) {
     set_tx_address(address);
     uint8_t buf[32] {};
     std::copy(data.begin(), data.end(), buf);
@@ -93,10 +92,18 @@ void nRF905::send(uint32_t address, const std::basic_string<uint8_t>& data) {
     }
 }
 
-std::basic_string<uint8_t> nRF905::receive() {
-    uint8_t buf[32] {};
-    if (read(fd, reinterpret_cast<char*>(buf), 32) == -1) {
-        throw IOException("Failed to read from nRF905 device", errno);
+std::array<uint8_t, 32> nRF905::receive() {
+    std::array<uint8_t, 32> buf;
+
+    if (read(fd, reinterpret_cast<char*>(buf.data()), 32) != -1) {
+        int hex[32] {};
+        std::stringstream ss;
+        for (int i = 0; i < 32; i++) {
+            int byt = buf[i];
+            ss << std::hex << byt << " ";
+        }
+        LOG_DETAILED("raw: " << ss.str());
     }
-    return std::basic_string<uint8_t>{buf, 32};
+
+    return buf;
 }

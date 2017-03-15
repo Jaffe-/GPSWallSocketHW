@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <array>
 
 class nRF905 {
 private:
@@ -21,6 +22,6 @@ public:
     void set_frequency(unsigned int freq);
     void set_pwr(int pwr);
     void set_channel(bool hf, int chn);
-    void send(uint32_t address, const std::basic_string<uint8_t>& data);
-    std::basic_string<uint8_t> receive();
+    void send(uint32_t address, const std::array<uint8_t, 32>& data);
+    std::array<uint8_t, 32> receive();
 };

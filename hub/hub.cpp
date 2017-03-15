@@ -8,6 +8,7 @@
 #include "ioexception.h"
 #include "json.hpp"
 #include "../node/protocol.h"
+#include <array>
 
 #define LOG_MODULE "Hub"
 #include "log.h"
@@ -40,14 +41,14 @@ private:
         RelayState relay_state;
         ControlState control_state;
 
-        std::basic_string<uint8_t> send_buffer{32,0};
+        std::array<uint8_t, 32> send_buffer;
         int send_tries;
         enum { FREE, TRANSMITTING, FAILURE } send_state;
     };
 
     std::map<uint32_t, DeviceEntry> devices;
 
-    void send(uint32_t address, const std::basic_string<uint8_t>& msg);
+    void send(uint32_t address, const std::array<uint8_t, 32>& msg);
     void send_handler();
     void ack_message(uint32_t address);
     void nrf_receive_handler();
@@ -76,8 +77,8 @@ void Hub::ack_message(uint32_t address) {
 }
 
 void Hub::nrf_receive_handler() {
-    std::basic_string<uint8_t> s_msg = nrf.receive();
-    const uint8_t *msg = s_msg.data();
+    std::array<uint8_t, 32> msg_arr = nrf.receive();
+    const uint8_t* msg = msg_arr.data();
 
     uint32_t address = get_msg_address(msg);
     MessageType type = get_msg_type(msg);
@@ -153,9 +154,9 @@ void Hub::nrf_receive_handler() {
     }
 
     /* Acknowledge the message regardless */
-    uint8_t buffer[32] {};
-    create_msg_ack(buffer);
-    nrf.send(address, std::basic_string<uint8_t>{buffer, 32});
+    std::array<uint8_t, 32> buffer;
+    create_msg_ack(buffer.data());
+    nrf.send(address, buffer);
 }
 
 void Hub::socket_receive_handler() {
@@ -164,7 +165,7 @@ void Hub::socket_receive_handler() {
         return;
 
     for (const auto& json_packet : json_packets) {
-        uint8_t buffer[32] {};
+        std::array<uint8_t, 32> buffer;
 
         if (json_packet.find("address") == json_packet.end() ||
             json_packet.find("command") == json_packet.end()) {
@@ -176,25 +177,25 @@ void Hub::socket_receive_handler() {
         std::string command = json_packet["command"];
 
         if (command == "on") {
-            create_msg_on(buffer);
+            create_msg_on(buffer.data());
         }
         else if (command == "off") {
-            create_msg_off(buffer);
+            create_msg_off(buffer.data());
         }
         else if (command == "config") {
             uint32_t new_address = json_packet["new_address"];
-            create_msg_config(buffer, new_address);
+            create_msg_config(buffer.data(), new_address);
         }
         else {
             LOG_WARN("Unexpected command " << command << " received on socket");
             continue;
         }
 
-        send(address, std::basic_string<uint8_t>{buffer, 32});
+        send(address, buffer);
     }
 }
 
-void Hub::send(uint32_t address, const std::basic_string<uint8_t>& msg) {
+void Hub::send(uint32_t address, const std::array<uint8_t, 32>& msg) {
     auto it = devices.find(address);
     if (it == devices.end()) {
         LOG_WARN("Tried to send message to unregistered device.");
