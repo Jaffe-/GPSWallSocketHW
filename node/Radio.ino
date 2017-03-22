@@ -147,7 +147,7 @@ static void sendPacket_config()
 }
 
 void sendPacket_status() {
-  Serial.println("Send status packet.");
+  //Serial.println("Send status packet.");
 
   // Convert packet data to plain byte array
   byte tmpBuff[NRF905_MAX_PAYLOAD];
@@ -163,7 +163,7 @@ void sendPacket_status() {
   //Let current sensor know it can start collecting data again
   doneSending();
   
-  Serial.println("Done sending status.");
+  //Serial.println("Done sending status.");
 
   nRF905_receive();
 }

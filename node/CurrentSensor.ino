@@ -64,7 +64,7 @@ void setAverage() {
   averages[avgIndex] = sqrt((float)(total)/SENSOR_RDG_PER_AVG)/LEVELS_PER_AMP;
   avgIndex += 1;
   if(avgIndex > SENSOR_RDG_PER_PACKET-1) {
-    Serial.println("Ready to Send");
+    //Serial.println("Ready to Send");
     avgIndex = 0;
     readyToSend = true;
   } 

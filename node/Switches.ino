@@ -11,6 +11,8 @@ void switches_setup() {
 
 //functions here
 ControlState getSwitchState() {
+  return ControlState::GEO; //TODO: Take this out later!!!!
+  
   int buttonStateA = digitalRead(SWITCH_INPUT_A);
   int buttonStateB = digitalRead(SWITCH_INPUT_B);
 
