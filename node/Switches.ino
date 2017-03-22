@@ -1,34 +1,31 @@
 
 //Switch property variables
-int switchButtonA = 2; //TODO: Change
-int switchButtonB = 3; //TODO: Change
 
 //Switches Setup
 void switches_setup() {
+  Serial.println("Switches setup");
   // make the switchbuttons' pin an input:
-  pinMode(switchButtonA, INPUT);
-  pinMode(switchButtonB, INPUT);
-  
-  
+  pinMode(SWITCH_INPUT_A, INPUT);
+  pinMode(SWITCH_INPUT_B, INPUT);
 }
 
 //functions here
-switchState getSwitchState() {
-  int buttonStateA = digitalRead(switchButtonA);
-  int buttonStateB = digitalRead(switchButtonB);
+ControlState getSwitchState() {
+  int buttonStateA = digitalRead(SWITCH_INPUT_A);
+  int buttonStateB = digitalRead(SWITCH_INPUT_B);
 
   //TODO: fix this when we have real buttons
   if(buttonStateA == 1 && buttonStateB == 1) {
-    return on;
+    return ControlState::ON;
   }
   else if(buttonStateA == 1 && buttonStateB == 0) {
-    return geo;
+    return ControlState::GEO;
   }
   else if(buttonStateA == 0 && buttonStateB == 1) {
-    return geo;
+    return ControlState::GEO;
   }
   else {
-    return off;
+    return ControlState::OFF;
   }
 
 }

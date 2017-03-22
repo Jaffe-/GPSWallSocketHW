@@ -1,7 +1,7 @@
-enum switchState {
-  on,
-  off,
-  geo
-};
+//enum switchState {
+//  on,
+//  off,
+//  geo
+//};
 
-switchState getSwitchState();
+//switchState getSwitchState();
