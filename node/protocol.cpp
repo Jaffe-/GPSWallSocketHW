@@ -15,8 +15,8 @@ void protocol_set_my_address(uint32_t address) {
 void serialize(uint8_t *buffer) {}
 
 template <typename T, typename... Rest>
-void serialize(uint8_t *buffer, T first, Rest... rest) {
-    *(reinterpret_cast<T*>(buffer)) = first;
+void serialize(uint8_t *buffer, const T& first, const Rest&... rest) {
+    memcpy(buffer, reinterpret_cast<const uint8_t*>(&first), sizeof(T));
     serialize(buffer + sizeof(T), rest...);
 }
 
