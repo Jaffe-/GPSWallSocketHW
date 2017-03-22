@@ -28,6 +28,7 @@ void create_msg_off(uint8_t *buffer);
 void create_msg_config(uint8_t *buffer, uint32_t address);
 void create_msg_init_config(uint8_t *buffer);
 void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState control_state, float current);
+void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState control_state, float (&current)[5]);
 
 MessageType get_msg_type(const uint8_t *buffer);
 uint32_t get_msg_address(const uint8_t *buffer);

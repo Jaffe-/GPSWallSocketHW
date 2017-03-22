@@ -40,7 +40,7 @@ void create_msg_init_config(uint8_t *buffer) {
     serialize(buffer, MessageType::INIT_CONFIG, my_address);
 }
 
-void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState control_state, float current) {
+void create_msg_status(uint8_t *buffer, RelayState relay_state, ControlState control_state, float (&current)[5]) {
     serialize(buffer, MessageType::STATUS, my_address, relay_state, control_state, current);
 }
 
