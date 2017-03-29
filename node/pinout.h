@@ -1,5 +1,5 @@
 //Current Sensor
-#define CURRENT_SENSOR 0
+#define CURRENT_SENSOR A0
 
 //LEDs
 
@@ -14,7 +14,8 @@
 //Radio
 #define INT_SENSE_PIN 3;
 
-
+//Configure Button
+#define CONFIGRE_BUTTON_PIN 5
 
 //Constants
 #define SENSOR_RDG_PER_PACKET 5

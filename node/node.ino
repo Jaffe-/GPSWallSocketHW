@@ -11,6 +11,7 @@ void setup()
 {
     Serial.begin(9600);
     LED_setup();
+    ConfigureButton_setup();
     relay_setup();
     switches_setup();
     radio_setup();
@@ -23,6 +24,7 @@ void loop()
 //    LED_test();
     //Serial.println(analogRead(0));
     //delay(5);
+    Cofigure_loop();
     radio_loop();
     control_relay();
 }

@@ -23,7 +23,7 @@ void radio_setup() {
   nRF905_init();
 
   //Converter
-  uint32_t rx_addr; 
+   
 //  rx_addr = byte2int(DEFAULT_RADIO_ADDR);
 
   //Set my address
@@ -37,15 +37,16 @@ void radio_setup() {
   nRF905_setTXAddress(tx_addr);
 
   if(!isConfiguredFunc()){
-    Serial.print("Default Radio Address: ");
-    rx_addr = byte2int(DEFAULT_RADIO_ADDR);
-    Serial.println(rx_addr);
-    nRF905_setRXAddress(DEFAULT_RADIO_ADDR);
-    protocol_set_my_address(rx_addr);
+//    Serial.print("Default Radio Address: ");
+//    rx_addr = byte2int(DEFAULT_RADIO_ADDR);
+//    Serial.println(rx_addr);
+//    nRF905_setRXAddress(DEFAULT_RADIO_ADDR);
+//    protocol_set_my_address(rx_addr);
     configure_address();
   }
   else {
     //set RX addr to stored addr in EEPROM
+    uint32_t rx_addr;
     byte rx_addr_byteArray[4];
     for(int i = 0; i < 4; i++) {
       rx_addr_byteArray[i] = EEPROM.read(i); 
@@ -63,6 +64,13 @@ void radio_setup() {
 
 //functions here
 void configure_address() {
+  uint32_t rx_addr;
+  Serial.print("Default Radio Address: ");
+  rx_addr = byte2int(DEFAULT_RADIO_ADDR);
+  Serial.println(rx_addr);
+  nRF905_setRXAddress(DEFAULT_RADIO_ADDR);
+  protocol_set_my_address(rx_addr);
+  
   //send message init config message
   sendPacket_config();
   //wait for response from hub
@@ -88,6 +96,10 @@ bool isConfiguredFunc(){
 
 bool getIsConfigured() {
   return isConfigured;
+}
+
+void setIsConfigured(bool inp) {
+  isConfigured = inp;
 }
 
 void updateEEPROMAddress(byte *new_address) {
@@ -151,7 +163,13 @@ void sendPacket_status() {
 
   // Convert packet data to plain byte array
   byte tmpBuff[NRF905_MAX_PAYLOAD];
-  float temp[SENSOR_RDG_PER_PACKET] = {10, 50, 42.3, 98.6, 0};
+  //float temp[SENSOR_RDG_PER_PACKET] = {10, 50, 42.3, 98.6, 0};
+//  temp = getAverageArray();
+  float temp[SENSOR_RDG_PER_PACKET];
+  for(int i = 0; i < SENSOR_RDG_PER_PACKET; i++) {
+    temp[i] = getAverageArray()[i];
+  }
+  
   create_msg_status(tmpBuff, getRelayState(), getSwitchState(), temp);
   
   // Set payload data
