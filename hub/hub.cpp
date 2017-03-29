@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <queue>
+#include <algorithm>
 #include <signal.h>
 #include "nrf905.h"
 #include "socket.h"
@@ -20,10 +21,20 @@ int detail_enabled;
 constexpr uint32_t UNCONFIGURED_ADDRESS = 1;
 constexpr int SEND_MAX_TRIES = 5;
 constexpr int SUCCESSIVE_SENDS = 5;
-constexpr std::chrono::duration<double> DEVICE_UPDATE_TIMEOUT = std::chrono::seconds(5);
+constexpr std::chrono::duration<double> DEVICE_UPDATE_TIMEOUT = std::chrono::seconds(1);
+constexpr std::chrono::duration<double> SEND_PERIOD = std::chrono::milliseconds(200);
+constexpr std::chrono::duration<double> STATISTICS_PERIOD = std::chrono::seconds(1);
 
 json make_event_json(uint32_t address, const std::string& event) {
     return {{"address", address}, {"event", event}};
+}
+
+json make_current_json(uint32_t address, float current) {
+    return {
+        {"address", address},
+        {"event", "current_update"},
+        {"current", current }
+    };
 }
 
 class Hub {
@@ -35,6 +46,7 @@ private:
     struct DeviceEntry {
         std::chrono::steady_clock::time_point last_receive_time;
         std::chrono::steady_clock::time_point last_message_sent;
+        std::chrono::steady_clock::time_point last_current_update;
 
         /* Last received updates of these state variables.
            Use these to detect changes that should be reported to the cloud */
@@ -43,7 +55,8 @@ private:
 
         std::array<uint8_t, 32> send_buffer;
         int send_tries;
-        enum { FREE, TRANSMITTING, FAILURE } send_state;
+        enum { FREE, TRANSMITTING, FAILURE } send_state = FREE;
+        std::vector<float> current_measurements;
     };
 
     std::map<uint32_t, DeviceEntry> devices;
@@ -54,6 +67,7 @@ private:
     void nrf_receive_handler();
     void socket_receive_handler();
     void timeout_handler();
+    void current_update_handler();
 
 public:
     Hub();
@@ -95,68 +109,77 @@ void Hub::nrf_receive_handler() {
     }
     LOG_DETAILED(LOG_ADDR(address) << "received " << get_msg_type_string(type));
 
-    switch (type) {
-    case MessageType::ACK:
-        ack_message(address);
+    if (address == UNCONFIGURED_ADDRESS && type != MessageType::INIT_CONFIG) {
+        LOG_WARN("Unexpected message from address 1");
         return;
+    } else {
+        switch (type) {
+        case MessageType::ACK:
+            ack_message(address);
+            return;
 
 
-    case MessageType::INIT_CONFIG:
-        if (address != UNCONFIGURED_ADDRESS) {
-            LOG_WARN("INIT_CONFIG should only be sent from address 1");
-        } else {
-            socket.send(make_event_json(address, "config_request"));
-        }
-        break;
+        case MessageType::INIT_CONFIG:
+            if (address != UNCONFIGURED_ADDRESS) {
+                LOG_WARN("INIT_CONFIG should only be sent from address 1");
+            } else {
+                socket.send(make_event_json(address, "config_request"));
+            }
+            break;
 
 
-    case MessageType::STATUS: {
-        RelayState relay_state;
-        ControlState control_state;
-        float current[5];
+        case MessageType::STATUS: {
+            RelayState relay_state;
+            ControlState control_state;
+            float currents[5];
 
-        decode_msg_status(msg, relay_state, control_state, current);
+            decode_msg_status(msg, relay_state, control_state, currents);
 
-        // TODO: Do something with the current
+            // TODO: Do something with the current
 
-        if (devices[address].relay_state != relay_state ||
-            devices[address].control_state != control_state) {
             if (devices[address].relay_state != relay_state ||
-                control_state == ControlState::GEO) {
-                if (relay_state == RelayState::ON)
-                    socket.send(make_event_json(address, "switched_on"));
-                else if (relay_state == RelayState::OFF)
-                    socket.send(make_event_json(address, "switched_off"));
+                devices[address].control_state != control_state) {
+                if (devices[address].relay_state != relay_state ||
+                    control_state == ControlState::GEO) {
+                    if (relay_state == RelayState::ON)
+                        socket.send(make_event_json(address, "switched_on"));
+                    else if (relay_state == RelayState::OFF)
+                        socket.send(make_event_json(address, "switched_off"));
+                }
+
+                else {
+                    if (control_state == ControlState::ON)
+                        socket.send(make_event_json(address, "manual_on"));
+                    else if (control_state == ControlState::OFF)
+                        socket.send(make_event_json(address, "manual_off"));
+                }
             }
 
-            else {
-                if (control_state == ControlState::ON)
-                    socket.send(make_event_json(address, "manual_on"));
-                else if (control_state == ControlState::OFF)
-                    socket.send(make_event_json(address, "manual_off"));
+            devices[address].relay_state = relay_state;
+            devices[address].control_state = control_state;
+            for (float current : currents) {
+                LOG_DETAILED("Current: " << current);
+                devices[address].current_measurements.push_back(current);
             }
+            break;
         }
 
-        devices[address].relay_state = relay_state;
-        devices[address].control_state = control_state;
-        break;
+
+            /* Messages that should not be received by the hub */
+
+        case MessageType::ON:
+        case MessageType::OFF:
+        case MessageType::CONFIG:
+        default:
+            LOG_WARN("Unexpected message to be received from node");
+            break;
+        }
+
+        /* Acknowledge the message regardless */
+        std::array<uint8_t, 32> buffer;
+        create_msg_ack(buffer.data());
+        nrf.send(address, buffer);
     }
-
-
-        /* Messages that should not be received by the hub */
-
-    case MessageType::ON:
-    case MessageType::OFF:
-    case MessageType::CONFIG:
-    default:
-        LOG_WARN("Unexpected message to be received from node");
-        break;
-    }
-
-    /* Acknowledge the message regardless */
-    std::array<uint8_t, 32> buffer;
-    create_msg_ack(buffer.data());
-    nrf.send(address, buffer);
 }
 
 void Hub::socket_receive_handler() {
@@ -204,11 +227,13 @@ void Hub::send(uint32_t address, const std::array<uint8_t, 32>& msg) {
 
     DeviceEntry& device = it->second;
 
-    if (device.send_state == DeviceEntry::FREE) {
-        device.send_buffer = msg;
-        device.send_tries = 0;
-        device.send_state = DeviceEntry::TRANSMITTING;
+    LOG("Send is called");
+    if (device.send_state != DeviceEntry::FREE) {
+        LOG_WARN("NOT FREE DEVICE: " << device.send_state);
     }
+    device.send_buffer = msg;
+    device.send_tries = 0;
+    device.send_state = DeviceEntry::TRANSMITTING;
 }
 
 void Hub::send_handler() {
@@ -216,12 +241,18 @@ void Hub::send_handler() {
         uint32_t address = pair.first;
         DeviceEntry& device = pair.second;
 
+        auto now = std::chrono::steady_clock::now();
+
         if (device.send_state == DeviceEntry::TRANSMITTING) {
+            if (device.send_tries > 0 && device.last_message_sent - now < SEND_PERIOD) {
+                continue;
+            }
             if (device.send_tries > 0) {
                 LOG(LOG_ADDR(address) << "no ACK, retry number " << device.send_tries);
             }
             nrf.send(address, device.send_buffer);
             device.send_tries++;
+            device.last_message_sent = now;
             if (device.send_tries == SEND_MAX_TRIES) {
                 LOG_WARN(LOG_ADDR(address) << "no ACK, giving up");
                 socket.send(make_event_json(address, "offline"));
@@ -236,14 +267,37 @@ void Hub::timeout_handler() {
         uint32_t address = it->first;
         DeviceEntry& device = it->second;
 
+        auto now = std::chrono::steady_clock::now();
+
         if (address != UNCONFIGURED_ADDRESS &&
-            std::chrono::steady_clock::now() - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
+            now - device.last_receive_time > DEVICE_UPDATE_TIMEOUT) {
             LOG(LOG_ADDR(address) << "timed out (assumed dead)");
             socket.send(make_event_json(address, "offline"));
             it = devices.erase(it);
         }
         else {
             ++it;
+        }
+    }
+}
+
+void Hub::current_update_handler() {
+    for (auto& pair : devices) {
+        uint32_t address = pair.first;
+        auto& device = pair.second;
+        if (address == UNCONFIGURED_ADDRESS)
+            continue;
+
+        auto now = std::chrono::steady_clock::now();
+
+        if (now - device.last_current_update >= STATISTICS_PERIOD) {
+            float average = std::accumulate(device.current_measurements.begin(),
+                                            device.current_measurements.end(),
+                                            0.0);
+            average /= device.current_measurements.size();
+            socket.send(make_current_json(address, average * 230));
+            device.current_measurements.clear();
+            device.last_current_update = now;
         }
     }
 }
@@ -260,7 +314,7 @@ void Hub::run() {
         int max_fd = nrf_fd > socket_fd ? nrf_fd : socket_fd;
 
         struct timeval tv;
-        tv.tv_usec = 500000;
+        tv.tv_usec = 100000;
         tv.tv_sec = 0;
         if (select(max_fd + 1, &readfds, NULL, NULL, &tv) == -1) {
             throw IOException("select() failed", errno);
@@ -275,6 +329,7 @@ void Hub::run() {
         else {
             send_handler();
             timeout_handler();
+            current_update_handler();
         }
     }
 }
