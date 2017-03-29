@@ -228,14 +228,12 @@ void Hub::send(uint32_t address, const std::array<uint8_t, 32>& msg) {
     DeviceEntry& device = it->second;
 
     LOG("Send is called");
-    if (device.send_state == DeviceEntry::FREE) {
-        device.send_buffer = msg;
-        device.send_tries = 0;
-        device.send_state = DeviceEntry::TRANSMITTING;
-    }
-    else {
+    if (device.send_state != DeviceEntry::FREE) {
         LOG_WARN("NOT FREE DEVICE: " << device.send_state);
     }
+    device.send_buffer = msg;
+    device.send_tries = 0;
+    device.send_state = DeviceEntry::TRANSMITTING;
 }
 
 void Hub::send_handler() {
@@ -287,15 +285,17 @@ void Hub::current_update_handler() {
     for (auto& pair : devices) {
         uint32_t address = pair.first;
         auto& device = pair.second;
+        if (address == UNCONFIGURED_ADDRESS)
+            continue;
 
         auto now = std::chrono::steady_clock::now();
 
         if (now - device.last_current_update >= STATISTICS_PERIOD) {
             float average = std::accumulate(device.current_measurements.begin(),
-                                             device.current_measurements.end(),
-                                             0);
+                                            device.current_measurements.end(),
+                                            0.0);
             average /= device.current_measurements.size();
-            socket.send(make_current_json(address, average));
+            socket.send(make_current_json(address, average * 230));
             device.current_measurements.clear();
             device.last_current_update = now;
         }
